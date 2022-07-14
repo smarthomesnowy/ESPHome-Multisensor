@@ -36,8 +36,8 @@ substitutions:
     
   mqtt:
     broker: 192.168.2.1
-    username: snowy
-    password: titstits
+    username: !secret mqtt_user
+    password: !secret mqtt_password
   
   
   remote_receiver:
@@ -65,8 +65,7 @@ substitutions:
       id: wifi_status
       
   sensor:
-  
-  
+   
     - platform: dht
       model: DHT22
       pin: D4
@@ -108,7 +107,8 @@ substitutions:
     - platform: template
       name: ${friendly_name} Uptime in seconds
       id: uptime_secs
-      icon: mdi:clock-start    
+      icon: mdi:clock-start 
+         
   switch:
           
     - platform: restart
