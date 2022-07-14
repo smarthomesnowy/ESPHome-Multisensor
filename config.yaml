@@ -50,6 +50,7 @@ substitutions:
      carrier_duty_percent: 50%
       
   binary_sensor:
+    
     - platform: gpio
       pin: D3
       name: "Bedroom Motion Sensor"
@@ -101,6 +102,7 @@ substitutions:
                 ).c_str();   
                 
   text_sensor:
+
     - platform: version
       name: ${friendly_name} Version
   
@@ -108,13 +110,14 @@ substitutions:
       name: ${friendly_name} Uptime in seconds
       id: uptime_secs
       icon: mdi:clock-start 
-         
+
   switch:
-          
+
     - platform: restart
       name: ${friendly_name} Restart
   
   button:
+
     - platform: template
       name: "TV Turn Off"
       on_press:
