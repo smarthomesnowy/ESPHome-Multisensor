@@ -1,8 +1,6 @@
 substitutions:
 
   friendly_name: "Shelf Sensors"
-#  reboot_timeout_wifi: 900s
-#  reboot_timeout_api: 1800s 
 
 esphome:
   name: shelfsensors
@@ -10,40 +8,36 @@ esphome:
 esp8266:
   board: d1_mini
 
-# Enable logging
-logger: 
-#  level: debug
-# Enable Home Assistant API
+packages:
+  wifi: !include common/wifi.yaml
+  default: !include common/default.yaml
+  diag: !include common/diag.yaml
+
+logger:
+  level: INFO
+  logs:
+    display.component: ERROR
+
 api:
   encryption:
     key: "S/9TR3qvT4iWEhcArUTYc+N9VMWaRdR+eeKpmnVpcWs="
 
 ota:
+  platform: esphome
   password: "49ce935336c03777452d84d3dacab63d"
 
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-  manual_ip:
-    static_ip: 192.168.2.13
-    gateway: 192.168.2.254
-    subnet: 255.255.255.0
-  ap:
-    ssid: "${friendly_name} Hotspot"
-    password: !secret wifi_password
-captive_portal:
+  manual_ip: 
+    static_ip: !secret shelfsensors_ip
 
-web_server:
-  port: 80
-
-remote_receiver:
-   pin:
-    number: D2
-    inverted: true
-   dump: all
+#remote_receiver:
+#   pin:
+#    number: D5
+#    inverted: true
+#   dump: lg
 
 remote_transmitter:
-   pin: D7 
+   pin: D6
    carrier_duty_percent: 50%
     
 binary_sensor:
@@ -51,67 +45,73 @@ binary_sensor:
     pin: D8
     name: "Living Room Motion Sensor"
     device_class: motion
-    
-  - platform: gpio
-    pin: D3
-    name: "Hall Motion Sensor"
-    device_class: motion   
+    icon: mdi:motion-sensor
 
-  - platform: status
-    name: Shelf Sensors Wifi
-    id: wifi_status
-    
 sensor:
   - platform: dht
     model: DHT22
-    pin: D1
+    pin: D2
     temperature:
       name: "${friendly_name} Temperature"
+      icon: mdi:thermometer
       filters:
-      - offset: -6.0
+      - offset: -4.0
     humidity:
       name: "${friendly_name} Humidity"
+      icon: mdi:air-filter
     update_interval: 60s
-    
-  - platform: uptime
-    name: ${friendly_name} Uptime
-    id: uptime_sensor
-    update_interval: 60s
-    on_raw_value:
-      then:
-        - text_sensor.template.publish:
-            id: uptime_secs
-            state: !lambda |-
-              int seconds = round(id(uptime_sensor).raw_state);
-              int days = seconds / (24 * 3600);
-              seconds = seconds % (24 * 3600);
-              int hours = seconds / 3600;
-              seconds = seconds % 3600;
-              int minutes = seconds /  60;
-              seconds = seconds % 60;
-              return (
-                (days ? to_string(days) + "d " : "") +
-                (hours ? to_string(hours) + "h " : "") +
-                (minutes ? to_string(minutes) + "m " : "") +
-                (to_string(seconds) + "s")
-              ).c_str();   
-              
-text_sensor:
-  - platform: version
-    name: ${friendly_name} Version
 
-  - platform: template
-    name: ${friendly_name} Uptime in seconds
-    id: uptime_secs
-    icon: mdi:clock-start
-    
-switch:      
-  - platform: restart
-    name: ${friendly_name} Restart
+light:
+  - platform: neopixelbus
+    type: GRB
+    variant: WS2812
+    pin: D7
+    num_leds: 1
+    name: "${friendly_name} Light"
+    icon: mdi:lightbulb
+    id: shelfsensor_light
+    restore_mode: ALWAYS_ON
+    on_turn_on:
+      then:
+        - light.control:
+            id: shelfsensor_light
+            effect: Rainbow Effect wide
+            brightness: 60%
+            
+    effects:
+      - flicker:
+      - flicker:
+          name: Flicker Effect With Custom Values
+          alpha: 95%
+          intensity: 1.5%    
+      - pulse:
+      - pulse:
+          name: "Fast Pulse"
+          transition_length: 0.5s
+          update_interval: 0.5s
+      - pulse:
+          name: "Slow Pulse"
+          # transition_length: 1s      # defaults to 1s
+          update_interval: 2s
+      - random:
+      - random:
+          name: Random Effect With Custom Values
+          transition_length: 10s
+          update_interval: 7s
+      - addressable_rainbow:
+      - addressable_rainbow:
+          name: Rainbow Effect slow
+          speed: 20
+          width: 10
+      - addressable_rainbow:
+          name: Rainbow Effect wide
+          speed: 1
+          width: 200
 
 button:
   - platform: template
     name: "TV Turn Off"
+    icon: mdi:television-classic
     on_press:
       remote_transmitter.transmit_rc5:
         address: 0x00
@@ -119,13 +119,15 @@ button:
 
   - platform: template
     name: "TV Mute"
+    icon: mdi:volume-mute
     on_press:
       remote_transmitter.transmit_rc5:
         address: 0x00
-        command: 0x0D
+        command: 0x0C
 
   - platform: template
     name: "TV Volume Up"
+    icon: mdi:volume-plus
     on_press:
       remote_transmitter.transmit_rc5:
         address: 0x00
@@ -136,6 +138,7 @@ button:
 
   - platform: template
     name: "TV Volume Down"
+    icon: mdi:volume-minus
     on_press:
       remote_transmitter.transmit_rc5:
         address: 0x00
@@ -147,3 +150,85 @@ button:
       remote_transmitter.transmit_rc5:
         address: 0x00
         command: 0x26
+     
+  - platform: template
+    name: "Vape Power"
+    icon: mdi:cannabis
+    on_press:
+      remote_transmitter.transmit_lg:
+        data: 0x01FE7887
+        nbits: 32
+        
+  - platform: template
+    name: "Fan1"
+    icon: mdi:fan
+    on_press:
+      remote_transmitter.transmit_lg:
+        data: 0x01FE20DF
+        nbits: 32
+        
+  - platform: template
+    name: "Fan2"
+    icon: mdi:fan
+    on_press:
+      remote_transmitter.transmit_lg:
+        data: 0x01FEA05F
+        nbits: 32
+        
+  - platform: template
+    name: "Fan3"
+    icon: mdi:fan
+    on_press:
+      remote_transmitter.transmit_lg:
+        data: 0x01FE609F
+        nbits: 32
+        
+  - platform: template
+    name: "Fan Off"
+    icon: mdi:fan-off
+    on_press:
+      remote_transmitter.transmit_lg:
+        data: 0x01FE10EF
+        nbits: 32
+        
+  - platform: template
+    name: "Temp Up"
+    on_press:
+      remote_transmitter.transmit_lg:
+        data: 0x01FED827
+        nbits: 32
+        
+  - platform: template
+    name: "Temp Down"
+    on_press:
+      remote_transmitter.transmit_lg:
+        data: 0x01FEB04F
+        nbits: 32
+        
+  - platform: template
+    name: "Temp 200"
+    on_press:
+      remote_transmitter.transmit_lg:
+        data: 0x01FE50AF
+        nbits: 32
+        
+  - platform: template
+    name: "Temp 210"
+    on_press:
+      remote_transmitter.transmit_lg:
+        data: 0x01FEF807
+        nbits: 32
+        
+  - platform: template
+    name: "Temp 220"
+    on_press:
+      remote_transmitter.transmit_lg:
+        data: 0x01FE30CF
+        nbits: 32    
+       
+  - platform: template
+    name: "Temp 230"
+    on_press:
+      remote_transmitter.transmit_lg:
+        data: 0x01FE708F
+        nbits: 32 
